@@ -1,22 +1,22 @@
 import cv2
 import dlib
 import numpy as np
-from selfmath import GetSlope, LinesInAngle, MidPt, dist
+import selfmath
 import imutils
+import os
 from detectface import Detection
 
-def DetectChin(img, p, refdis):
+def DetectChin(img, p):
 
     # Load the detector
     detector = dlib.get_frontal_face_detector()
 
     # Load the predictor
-    predictor = dlib.shape_predictor("/Users/nicholas717/Downloads/Work/code/shape_predictor_68_face_landmarks_GTX.dat")
+    predictor = dlib.shape_predictor("/Users/nicholas717/PycharmProjects/FaceAngleDetection/shape_predictor_68_face_landmarks_GTX.dat")
 
     # read the image
     img = cv2.imread(str(img))
-    a, b, _ = img.shape
-    img = imutils.resize(img, width = 350, height=350)
+    img = imutils.resize(img, width=350, height=350)
 
     # Convert image into grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -27,7 +27,6 @@ def DetectChin(img, p, refdis):
         # Create landmark object
         landmarks = predictor(image=gray, box=face)
 
-
         # Loop through all the points
         X = []
         for n in range(0, 68):
@@ -35,17 +34,14 @@ def DetectChin(img, p, refdis):
             y = landmarks.part(n).y
             X.append((x, y))
 
-            # Find the mid point of two eyebrows
+            # Find the mid-point of two eyebrows
             if n is 22:
-                mid_pt = MidPt(X[21], X[22])
-                cv2.circle(img=img, center=(int(mid_pt[0]), int(mid_pt[1])), radius=3, color=(0, 255, 255), thickness=1)
+                mid_pt = selfmath.MidPt(X[21], X[22])
+                cv2.circle(img=img, center=(int(mid_pt[0]), int(mid_pt[1])),
+                           radius=3, color=(0, 255, 255), thickness=1)
                 line = np.array([np.array(mid_pt), np.array(X[8])], dtype=int)
 
-                #cv2.drawContours(img, [line], 0, (0, 255, 0), 2)
-
-                distance = dist(mid_pt, X[8])
-
-            # Obtain the angle of right / left face to the nose
+            # Obtain the angle of right face and left face to the nose
             elif n is 33:
                 x14 = np.array(X[14])
                 x15 = np.array(X[15])
@@ -53,72 +49,66 @@ def DetectChin(img, p, refdis):
                 x01 = np.array(X[1])
                 x02 = np.array(X[2])
 
-                m1433 = GetSlope(x14, x33)
-                m1533 = GetSlope(x15, x33)
-                m0133 = GetSlope(x01, x33)
-                m0233 = GetSlope(x02, x33)
+                m1433 = selfmath.GetSlope(x14, x33)
+                m1533 = selfmath.GetSlope(x15, x33)
+                m0133 = selfmath.GetSlope(x01, x33)
+                m0233 = selfmath.GetSlope(x02, x33)
 
-                """
-                cv2.drawContours(img, [np.array([x01, x33])], 0, (255, 255, 255), 2)
-                cv2.drawContours(img, [np.array([x02, x33])], 0, (255, 255, 255), 2)
-                cv2.drawContours(img, [np.array([x14, x33])], 0, (255, 255, 255), 2)
-                cv2.drawContours(img, [np.array([x15, x33])], 0, (255, 255, 255), 2)
-                """
-
-                # Draw face width
+                # Find the face width
                 x00 = np.array(X[0])
                 x16 = np.array(X[16])
-                cv2.drawContours(img, [np.array([x00, x16])], 0, (0, 0, 100), 2)
-
-                angle_left = LinesInAngle(m1433, m1533)
-                angle_right = LinesInAngle(m0133, m0233)
-                print("Left angle: ", angle_left)
-                print("Right angle: ", angle_right)
-                print("Distance to ref point is: ", refdis)
-
 
             # Draw a circle
-            #cv2.putText(img, str(n), (x+2,y+2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
             cv2.circle(img=img, center=(x, y), radius=3, color=(0, 0, 255), thickness=-1)
 
-    # Find the angle of the chin
-    # By the slope of two lines on left and right
-        m1 = GetSlope(X[6], X[8])
-        m2 = GetSlope(X[8], X[10])
-        face_width = dist(x00, x16)
-        angle = np.abs(LinesInAngle(m1, m2))
-        print("Ori angle is: ", angle)
-        print("Face width is: ", face_width)
+        # ----- Face angle -----
+        # Find the angle of the chin
+        # By the slope of two lines on left and right
+        angle_left = selfmath.LinesInAngle(m1433, m1533)
+        angle_right = selfmath.LinesInAngle(m0133, m0233)
+
+        m1 = selfmath.GetSlope(X[6], X[8])
+        m2 = selfmath.GetSlope(X[8], X[10])
+        face_width = selfmath.dist(x00, x16)
+        angle = np.abs(selfmath.LinesInAngle(m1, m2))
+
+        print(f"----- Face angle detection -----\n"
+              f"The face angle is {angle}\n"
+              f"The face width is {face_width}")
+
+        # ----- Distortion checking -----
+        print(f"----- Distortion checking -----\n"
+              f"The left angle is {angle_left} and the right is {angle_right}")
+
+        if (np.abs(angle_left - angle_right) > 5.0):
+            if(angle_left > angle_right):
+                print(f"The face turned left with angle {angle_left}")
+            else:
+                print(f"The face turned right with angle {angle_right}")
+        else:
+            print("No distortion detected!")
 
     if p == True:
-        # Put the angle on the image
-        #cv2.putText(img, str(angle), (100,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-
         # show the image
-        cv2.imshow("Hello", img)
+        cv2.imshow("test", img)
 
-        # Export the image to test_num.jpg
-        #cv2.imwrite('test' + str(j) + '.jpg', img)
-
-
-    # Delay between every fram
-    cv2.waitKey(delay=0)
+        # Delay between every fram
+        cv2.waitKey(delay=0)
 
     # Close all windows
     cv2.destroyAllWindows()
     return
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
-    img_ori = "/Users/nicholas717/Downloads/Work/code/2.webp"
-    dist2ref = Detection(img_ori)
+    # Crop each faces from the "big" image
+    origin_img = "/Users/nicholas717/Downloads/Work/code/12321.webp"
+    Detection(origin_img)
 
-    A = []
-    for i in range(1, 50):
-        try:
-            print(i)
-            a = DetectChin("/Users/nicholas717/PycharmProjects/PythonProject/face" + str(i) + ".jpg", True, dist2ref[i])
-            A.append((i, a))
-        except:
-            print("No", i)
-            continue
+    # Test the cropped faces in test_image/ dir
+    for filename in os.listdir('test_image'):
+        # Ignore example.png and .DS_Store
+        if filename not in ('detected.png', '.DS_Store'):
+                DetectChin("/Users/nicholas717/PycharmProjects/FaceAngleDetection/test_image/"
+                           + str(filename), True)
+

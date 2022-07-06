@@ -7,8 +7,8 @@ The repo investigate the face angle, or face shape of different gender.
 1. Each detected faces in the image will be cropped out
 2. It will automatically detect the face angle, by finding the slope of two side of the face (see figure below).
 3. The face angle will be calculated using the equation below,
-$$ \theta = \arctan (\frac{m_{2} - m_{1}}{1 + m_{1}m_{2}}) \cdot \frac{180}{\pi}  $$
-where m1 and m2 represent the slopes
+$$ \theta = \arctan (\frac{m_{2} - m_{1}}{1 + m_{1}m_{2}}) \cdot \frac{180}{\pi}  $$  where m1 and m2 represent the slopes
+4. Perform distortion checking and report the tilled angle
 
    
 ### Dataset used

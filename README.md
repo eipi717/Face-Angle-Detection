@@ -1,6 +1,6 @@
 # Face Angle Detection
 ### Introduction
-The repo investigate the face angle, or face shape of different gender.
+The repo investigate the relationship between the face shape and the gender.
 
 ---
 ### Implementation
